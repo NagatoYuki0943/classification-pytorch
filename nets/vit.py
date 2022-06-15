@@ -24,7 +24,7 @@ def drop_path(x, drop_prob: float = 0., training: bool = False):
     keep_prob       = 1 - drop_prob
     shape           = (x.shape[0],) + (1,) * (x.ndim - 1)
     random_tensor   = keep_prob + torch.rand(shape, dtype=x.dtype, device=x.device)
-    random_tensor.floor_() 
+    random_tensor.floor_()
     output          = x.div(keep_prob) * random_tensor
     return output
 
@@ -115,12 +115,12 @@ class Block(nn.Module):
         self.norm2      = norm_layer(dim)
         self.mlp        = Mlp(in_features=dim, hidden_features=int(dim * mlp_ratio), act_layer=act_layer, drop=drop)
         self.drop_path  = DropPath(drop_path) if drop_path > 0. else nn.Identity()
-        
+
     def forward(self, x):
         x = x + self.drop_path(self.attn(self.norm1(x)))
         x = x + self.drop_path(self.mlp(self.norm2(x)))
         return x
-        
+
 class VisionTransformer(nn.Module):
     def __init__(
             self, input_shape=[224, 224], patch_size=16, in_chans=3, num_classes=1000, num_features=768,
@@ -162,14 +162,14 @@ class VisionTransformer(nn.Module):
         self.blocks = nn.Sequential(
             *[
                 Block(
-                    dim         = num_features, 
-                    num_heads   = num_heads, 
-                    mlp_ratio   = mlp_ratio, 
-                    qkv_bias    = qkv_bias, 
+                    dim         = num_features,
+                    num_heads   = num_heads,
+                    mlp_ratio   = mlp_ratio,
+                    qkv_bias    = qkv_bias,
                     drop        = drop_rate,
-                    attn_drop   = attn_drop_rate, 
-                    drop_path   = dpr[i], 
-                    norm_layer  = norm_layer, 
+                    attn_drop   = attn_drop_rate,
+                    drop_path   = dpr[i],
+                    norm_layer  = norm_layer,
                     act_layer   = act_layer
                 )for i in range(depth)
             ]
@@ -179,9 +179,9 @@ class VisionTransformer(nn.Module):
 
     def forward_features(self, x):
         x = self.patch_embed(x)
-        cls_token = self.cls_token.expand(x.shape[0], -1, -1) 
+        cls_token = self.cls_token.expand(x.shape[0], -1, -1)
         x = torch.cat((cls_token, x), dim=1)
-        
+
         cls_token_pe = self.pos_embed[:, 0:1, :]
         img_token_pe = self.pos_embed[:, 1: , :]
 
@@ -218,7 +218,7 @@ class VisionTransformer(nn.Module):
             except:
                 module.requires_grad = True
 
-    
+
 def vit(input_shape=[224, 224], pretrained=False, num_classes=1000):
     model = VisionTransformer(input_shape)
     if pretrained:

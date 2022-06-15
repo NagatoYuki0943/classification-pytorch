@@ -6,6 +6,11 @@ import numpy as np
 from PIL import Image
 
 def evaluteTop1_5(classfication, lines, metrics_out_path):
+    """
+    classfication: 预测分类信息
+    lines: 图片数
+    metrics_out_path: 保存路径
+    """
     correct_1 = 0
     correct_5 = 0
     preds   = []
@@ -16,35 +21,51 @@ def evaluteTop1_5(classfication, lines, metrics_out_path):
         x = Image.open(annotation_path)
         y = int(line.split(';')[0])
 
+        #------------------------------#
+        #   top1
+        #   pred_1 == y 最大值相等
+        #------------------------------#
         pred        = classfication.detect_image(x)
         pred_1      = np.argmax(pred)
         correct_1   += pred_1 == y
-        
+
+        #------------------------------#
+        #   top5
+        #   y in pred_5 在前5个里面
+        #------------------------------#
         pred_5      = np.argsort(pred)[::-1]
         pred_5      = pred_5[:5]
         correct_5   += y in pred_5
-        
+
         preds.append(pred_1)
         labels.append(y)
         if index % 100 == 0:
             print("[%d/%d]"%(index, total))
-            
+
     hist        = fast_hist(np.array(labels), np.array(preds), len(classfication.class_names))
+    # 召回率
     Recall      = per_class_Recall(hist)
+    # 精确率
     Precision   = per_class_Precision(hist)
-    
+
     show_results(metrics_out_path, hist, Recall, Precision, classfication.class_names)
     return correct_1 / total, correct_5 / total, Recall, Precision
 
 def fast_hist(a, b, n):
     k = (a >= 0) & (a < n)
-    return np.bincount(n * a[k].astype(int) + b[k], minlength=n ** 2).reshape(n, n)  
+    return np.bincount(n * a[k].astype(int) + b[k], minlength=n ** 2).reshape(n, n)
 
+#------------------------------#
+#   召回率
+#------------------------------#
 def per_class_Recall(hist):
-    return np.diag(hist) / np.maximum(hist.sum(1), 1) 
+    return np.diag(hist) / np.maximum(hist.sum(1), 1)
 
+#------------------------------#
+#   精确率
+#------------------------------#
 def per_class_Precision(hist):
-    return np.diag(hist) / np.maximum(hist.sum(0), 1) 
+    return np.diag(hist) / np.maximum(hist.sum(0), 1)
 
 def adjust_axes(r, t, fig, axes):
     bb                  = t.get_window_extent(renderer=r)
@@ -56,7 +77,7 @@ def adjust_axes(r, t, fig, axes):
     axes.set_xlim([x_lim[0], x_lim[1] * propotion])
 
 def draw_plot_func(values, name_classes, plot_title, x_label, output_path, tick_font_size = 12, plt_show = True):
-    fig     = plt.gcf() 
+    fig     = plt.gcf()
     axes    = plt.gca()
     plt.barh(range(len(values)), values, color='royalblue')
     plt.title(plot_title, fontsize=tick_font_size + 2)
@@ -64,7 +85,7 @@ def draw_plot_func(values, name_classes, plot_title, x_label, output_path, tick_
     plt.yticks(range(len(values)), name_classes, fontsize=tick_font_size)
     r = fig.canvas.get_renderer()
     for i, val in enumerate(values):
-        str_val = " " + str(val) 
+        str_val = " " + str(val)
         if val < 1.0:
             str_val = " {0:.2f}".format(val)
         t = plt.text(val, i, str_val, color='royalblue', va='center', fontweight='bold')
@@ -76,7 +97,7 @@ def draw_plot_func(values, name_classes, plot_title, x_label, output_path, tick_
     if plt_show:
         plt.show()
     plt.close()
-    
+
 def show_results(miou_out_path, hist, Recall, Precision, name_classes, tick_font_size = 12):
     draw_plot_func(Recall, name_classes, "mRecall = {0:.2f}%".format(np.nanmean(Recall)*100), "Recall", \
         os.path.join(miou_out_path, "Recall.png"), tick_font_size = tick_font_size, plt_show = False)
@@ -94,11 +115,11 @@ def show_results(miou_out_path, hist, Recall, Precision, name_classes, tick_font
             writer_list.append([name_classes[i]] + [str(x) for x in hist[i]])
         writer.writerows(writer_list)
     print("Save confusion_matrix out to " + os.path.join(miou_out_path, "confusion_matrix.csv"))
-            
+
 def evaluteRecall(classfication, lines, metrics_out_path):
     correct = 0
     total = len(lines)
-    
+
     preds   = []
     labels  = []
     for index, line in enumerate(lines):
@@ -108,13 +129,13 @@ def evaluteRecall(classfication, lines, metrics_out_path):
 
         pred = classfication.detect_image(x)
         pred = np.argmax(pred)
-        
+
         preds.append(pred)
         labels.append(y)
-        
+
     hist        = fast_hist(labels, preds, len(classfication.class_names))
     Recall      = per_class_Recall(hist)
     Precision   = per_class_Precision(hist)
-    
+
     show_results(metrics_out_path, hist, Recall, Precision, classfication.class_names)
     return correct / total

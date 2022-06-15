@@ -1,3 +1,8 @@
+#--------------------------------------------------------------------------#
+#   model_path, classes_path, backbone
+#--------------------------------------------------------------------------#
+
+
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -62,7 +67,7 @@ class Classification(object):
         #---------------------------------------------------#
         self.class_names, self.num_classes = get_classes(self.classes_path)
         self.generate()
-        
+
         show_config(**self._defaults)
 
     #---------------------------------------------------#

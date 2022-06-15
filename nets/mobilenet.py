@@ -1,5 +1,5 @@
 from torch import nn
-from torchvision.models.utils import load_state_dict_from_url
+from torch.hub import load_state_dict_from_url
 
 
 __all__ = ['MobileNetV2', 'mobilenet_v2']
@@ -18,6 +18,7 @@ def _make_divisible(v, divisor, min_value=None):
         new_v += divisor
     return new_v
 
+# 卷积,标准化,激活函数
 class ConvBNReLU(nn.Sequential):
     def __init__(self, in_planes, out_planes, kernel_size=3, stride=1, groups=1):
         padding = (kernel_size - 1) // 2
@@ -27,6 +28,15 @@ class ConvBNReLU(nn.Sequential):
             nn.ReLU6(inplace=True)
         )
 
+#---------------------------------------------------#
+#   倒残差结构
+#   残差:   两端channel多,中间channel少
+#       降维 --> 升维
+#   倒残差: 两端channel少,中间channel多
+#       升维 --> 降维
+#   1x1 3x3DWConv 1x1
+#   最后的1x1Conv没有激活函数
+#---------------------------------------------------#
 class InvertedResidual(nn.Module):
     def __init__(self, inp, oup, stride, expand_ratio):
         super(InvertedResidual, self).__init__()
@@ -34,13 +44,23 @@ class InvertedResidual(nn.Module):
         assert stride in [1, 2]
 
         hidden_dim = int(round(inp * expand_ratio))
+        # 步长为1同时通道不变化才相加
         self.use_res_connect = self.stride == 1 and inp == oup
 
         layers = []
+        #----------------------------------------------------#
+        #   利用1x1卷积根据输入进来的通道数进行通道数上升,不扩张就不需要第一个1x1卷积了
+        #----------------------------------------------------#
         if expand_ratio != 1:
             layers.append(ConvBNReLU(inp, hidden_dim, kernel_size=1))
+        #----------------------------------------------------#
+        #   利用深度可分离卷积进行特征提取
+        #----------------------------------------------------#
         layers.extend([
             ConvBNReLU(hidden_dim, hidden_dim, stride=stride, groups=hidden_dim),
+            #----------------------------------------------------#
+            #   利用1x1的卷积进行通道数的下降,没有激活函数
+            #----------------------------------------------------#
             nn.Conv2d(hidden_dim, oup, 1, 1, 0, bias=False),
             nn.BatchNorm2d(oup),
         ])
@@ -62,6 +82,7 @@ class MobileNetV2(nn.Module):
 
         if inverted_residual_setting is None:
             inverted_residual_setting = [
+                # 扩张,out_channel,重复次数,stride
                 # t, c, n, s
                 # 112, 112, 32 -> 112, 112, 16
                 [1, 16, 1, 1],
@@ -89,9 +110,11 @@ class MobileNetV2(nn.Module):
         # 224, 224, 3 -> 112, 112, 32
         features = [ConvBNReLU(3, input_channel, stride=2)]
 
+        # 根据上述列表进行循环，构建mobilenetv2的结构
         for t, c, n, s in inverted_residual_setting:
             output_channel = _make_divisible(c * width_mult, round_nearest)
             for i in range(n):
+                # 第一次步长为2,其余为1
                 stride = s if i == 0 else 1
                 features.append(block(input_channel, output_channel, stride, expand_ratio=t))
                 input_channel = output_channel
@@ -118,12 +141,14 @@ class MobileNetV2(nn.Module):
                 nn.init.zeros_(m.bias)
 
     def forward(self, x):
+        # 224, 224, 3 -> 7,7,1280
         x = self.features(x)
-        # 1280
+        # 7,7,1280 -> 1280
         x = x.mean([2, 3])
+        # b,1280 -> b,num_classes
         x = self.classifier(x)
         return x
-    
+
     def freeze_backbone(self):
         for param in self.features.parameters():
             param.requires_grad = False

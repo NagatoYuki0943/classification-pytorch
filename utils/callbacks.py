@@ -15,7 +15,7 @@ class LossHistory():
         self.log_dir    = os.path.join(log_dir, "loss_" + str(time_str))
         self.losses     = []
         self.val_loss   = []
-        
+
         os.makedirs(self.log_dir)
         self.writer     = SummaryWriter(self.log_dir)
         try:
@@ -53,7 +53,7 @@ class LossHistory():
                 num = 5
             else:
                 num = 15
-            
+
             plt.plot(iters, scipy.signal.savgol_filter(self.losses, num, 3), 'green', linestyle = '--', linewidth = 2, label='smooth train loss')
             plt.plot(iters, scipy.signal.savgol_filter(self.val_loss, num, 3), '#8B4513', linestyle = '--', linewidth = 2, label='smooth val loss')
         except:

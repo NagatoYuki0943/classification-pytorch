@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from torchvision.models.utils import load_state_dict_from_url
+from torch.hub import load_state_dict_from_url
 
 model_urls = {
     'resnet50': 'https://download.pytorch.org/models/resnet50-19c8e357.pth',
@@ -8,32 +8,45 @@ model_urls = {
 
 
 def conv3x3(in_planes, out_planes, stride=1, groups=1, dilation=1):
-    return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
-                     padding=dilation, groups=groups, bias=False, dilation=dilation)
+    return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride, padding=dilation, groups=groups, bias=False, dilation=dilation)
 
 
 def conv1x1(in_planes, out_planes, stride=1):
     return nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride, bias=False)
 
 
-
+#-------------------------------------------------------------------------#
+#   主干: 卷积+bn+relu -> 卷积+bn+relu -> 卷积+bn
+#   短接: 卷积+bn
+#   短接后有relu
+#-------------------------------------------------------------------------#
 class Bottleneck(nn.Module):
     expansion = 4
-    def __init__(self, inplanes, planes, stride=1, downsample=None, groups=1,
-                 base_width=64, dilation=1, norm_layer=None):
+    def __init__(self, inplanes, planes, stride=1, downsample=None, groups=1, base_width=64, dilation=1, norm_layer=None):
         super(Bottleneck, self).__init__()
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
+
+        # ResNet就是channel,ResNeXt是channel的n倍
+        # 对于ResNet:     width = channel * (64 / 64) * 1 = channel
+        # 对于ResNeXt50:  width = channel * (4 / 64) * 32 = channel * 2  中间维度是原来的2倍
+        # 对于ResNeXt101: width = channel * (8 / 64) * 32 = channel * 4  中间维度是原来的4倍
         width = int(planes * (base_width / 64.)) * groups
         # Both self.conv2 and self.downsample layers downsample the input when stride != 1
+
+        # 1x1Conv降低通道数
         self.conv1 = conv1x1(inplanes, width)
         self.bn1 = norm_layer(width)
 
+        # 3x3Conv提取特征
         self.conv2 = conv3x3(width, width, stride, groups, dilation)
         self.bn2 = norm_layer(width)
 
+        # 1x1Conv还原通道数
         self.conv3 = conv1x1(width, planes * self.expansion)
         self.bn3 = norm_layer(planes * self.expansion)
+
+        # 激活函数是共用的
         self.relu = nn.ReLU(inplace=True)
         self.downsample = downsample
         self.stride = stride
@@ -51,11 +64,13 @@ class Bottleneck(nn.Module):
 
         out = self.conv3(out)
         out = self.bn3(out)
+        # 最后一层conv没有relu
 
         if self.downsample is not None:
             identity = self.downsample(x)
 
         out += identity
+        # 相加后有relu
         out = self.relu(out)
 
         return out
@@ -66,6 +81,13 @@ class ResNet(nn.Module):
     def __init__(self, block, layers, num_classes=1000, zero_init_residual=False,
                  groups=1, width_per_group=64, replace_stride_with_dilation=None,
                  norm_layer=None):
+        """
+        block:  残差结构 Basic Bottle
+        layers: 每层层数的列表
+        groups: 分组个数,对于ResNet为1, ResNext为32
+        width_per_group: 每个组的宽度(卷积核个数) 作用是对卷积层中间维度宽度做出调整 对于ResNet是64, 对于ResNeXt是4或8
+        """
+
         super(ResNet, self).__init__()
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
@@ -84,15 +106,14 @@ class ResNet(nn.Module):
         self.groups = groups
         self.base_width = width_per_group
 
-        # 224,224,3 -> 112,112,64
-        self.conv1 = nn.Conv2d(3, self.inplanes, kernel_size=7, stride=2, padding=3,
-                               bias=False)
+        # 3x3Conv 224,224,3 -> 112,112,64
+        self.conv1 = nn.Conv2d(3, self.inplanes, kernel_size=7, stride=2, padding=3, bias=False)
         self.bn1 = norm_layer(self.inplanes)
         self.relu = nn.ReLU(inplace=True)
 
-        # 112,112,64 -> 56,56,64
+        # 2x2max_pool 112,112,64 -> 56,56,64
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-        
+
         # 56,56,64 -> 56,56,256
         self.layer1 = self._make_layer(block, 64, layers[0])
 
@@ -110,7 +131,7 @@ class ResNet(nn.Module):
 
         # 7,7,2048 -> 2048
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        
+
         # 2048 -> num_classes
         self.fc = nn.Linear(512 * block.expansion, num_classes)
 
@@ -127,12 +148,21 @@ class ResNet(nn.Module):
                     nn.init.constant_(m.bn3.weight, 0)
 
     def _make_layer(self, block, planes, blocks, stride=1, dilate=False):
+        '''
+        创建卷积层
+        block: basic bottle
+        channel: 每一层输出维度个数(卷积核个数)
+        block_num: 几个卷积层
+        stride: 步长
+        '''
+        # 下采样层
         norm_layer = self._norm_layer
         downsample = None
         previous_dilation = self.dilation
         if dilate:
             self.dilation *= stride
             stride = 1
+        # 步长不为1或者进出通道不相等就设置下采样层 conv+bn 没有relu
         if stride != 1 or self.inplanes != planes * block.expansion:
             downsample = nn.Sequential(
                 conv1x1(self.inplanes, planes * block.expansion, stride),
@@ -140,10 +170,11 @@ class ResNet(nn.Module):
             )
 
         layers = []
-        # Conv_block
+        # 增加第一层,有下采样,因此特殊处理
         layers.append(block(self.inplanes, planes, stride, downsample, self.groups,
                             self.base_width, previous_dilation, norm_layer))
         self.inplanes = planes * block.expansion
+        # 后面的层数处理方式
         for _ in range(1, blocks):
             # identity_block
             layers.append(block(self.inplanes, planes, groups=self.groups,

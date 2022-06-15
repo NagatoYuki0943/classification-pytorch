@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from torchvision.models.utils import load_state_dict_from_url
+from torch.hub import load_state_dict_from_url
 
 model_urls = {
     'vgg16': 'https://download.pytorch.org/models/vgg16-397923af.pth',
@@ -43,7 +43,7 @@ class VGG(nn.Module):
             elif isinstance(m, nn.Linear):
                 nn.init.normal_(m.weight, 0, 0.01)
                 nn.init.constant_(m.bias, 0)
-    
+
     def freeze_backbone(self):
         for param in self.features.parameters():
             param.requires_grad = False

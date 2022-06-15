@@ -1,10 +1,14 @@
+#--------------------------------------------------#
+#   生成根目录的cls_train.txt cls_test.txt文件
+#--------------------------------------------------#
+
 import os
 from os import getcwd
 
 from utils.utils import get_classes
 
 #-------------------------------------------------------------------#
-#   classes_path    指向model_data下的txt，与自己训练的数据集相关 
+#   classes_path    指向model_data下的txt，与自己训练的数据集相关
 #                   训练前一定要修改classes_path，使其对应自己的数据集
 #                   txt文件中是自己所要去区分的种类
 #                   与训练和预测所用的classes_path一致即可
@@ -28,7 +32,7 @@ if __name__ == "__main__":
             if type_name not in classes:
                 continue
             cls_id = classes.index(type_name)
-            
+
             photos_path = os.path.join(datasets_path_t, type_name)
             photos_name = os.listdir(photos_path)
             for photo_name in photos_name:

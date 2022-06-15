@@ -1,3 +1,9 @@
+#-------------------------------------------------------------------#
+#   1. 放入数据集
+#   2. 修改model_data下面的cls_classes.txt为自己的分类名称
+#   3. 运行txt_annotation.py创建根目录的cls_train.txt cls_test.txt
+#   4. 开始训练
+#-------------------------------------------------------------------#
 import os
 
 import numpy as np
@@ -46,7 +52,7 @@ if __name__ == "__main__":
     #   训练自己的数据集的时候一定要注意修改classes_path
     #   修改成自己对应的种类的txt
     #----------------------------------------------------#
-    classes_path    = 'model_data/cls_classes.txt' 
+    classes_path    = 'model_data/cls_classes.txt'
     #----------------------------------------------------#
     #   输入的图片大小
     #----------------------------------------------------#
@@ -70,7 +76,7 @@ if __name__ == "__main__":
     #
     #   如果训练过程中存在中断训练的操作，可以将model_path设置成logs文件夹下的权值文件，将已经训练了一部分的权值再次载入。
     #   同时修改下方的 冻结阶段 或者 解冻阶段 的参数，来保证模型epoch的连续性。
-    #   
+    #
     #   当model_path = ''的时候不加载整个模型的权值。
     #
     #   此处使用的是整个模型的权重，因此是在train.py进行加载的，pretrain不影响此处的权值加载。
@@ -78,13 +84,13 @@ if __name__ == "__main__":
     #   如果想要让模型从0开始训练，则设置model_path = ''，pretrain = Fasle，此时从0开始训练。
     #----------------------------------------------------------------------------------------------------------------------------#
     model_path      = ""
-        
+
     #----------------------------------------------------------------------------------------------------------------------------#
     #   训练分为两个阶段，分别是冻结阶段和解冻阶段。设置冻结阶段是为了满足机器性能不足的同学的训练需求。
     #   冻结训练需要的显存较小，显卡非常差的情况下，可设置Freeze_Epoch等于UnFreeze_Epoch，此时仅仅进行冻结训练。
-    #      
+    #
     #   在此提供若干参数设置建议，各位训练者根据自己的需求进行灵活调整：
-    #   （一）从整个模型的预训练权重开始训练： 
+    #   （一）从整个模型的预训练权重开始训练：
     #       Adam：
     #           Init_Epoch = 0，Freeze_Epoch = 50，UnFreeze_Epoch = 100，Freeze_Train = True，optimizer_type = 'adam'，Init_lr = 1e-3。（冻结）
     #           Init_Epoch = 0，UnFreeze_Epoch = 100，Freeze_Train = False，optimizer_type = 'adam'，Init_lr = 1e-3。（不冻结）
@@ -133,7 +139,7 @@ if __name__ == "__main__":
     #                   默认先冻结主干训练后解冻训练。
     #------------------------------------------------------------------#
     Freeze_Train        = True
-    
+
     #------------------------------------------------------------------#
     #   其它训练参数：学习率、优化器、学习率下降有关
     #------------------------------------------------------------------#
@@ -171,7 +177,7 @@ if __name__ == "__main__":
     #------------------------------------------------------------------#
     #   num_workers     用于设置是否使用多线程读取数据
     #                   开启后会加快数据读取速度，但是会占用更多内存
-    #                   内存较小的电脑可以设置为2或者0  
+    #                   内存较小的电脑可以设置为2或者0
     #------------------------------------------------------------------#
     num_workers         = 4
 
@@ -205,7 +211,7 @@ if __name__ == "__main__":
     if pretrained:
         if distributed:
             if local_rank == 0:
-                download_weights(backbone)  
+                download_weights(backbone)
             dist.barrier()
         else:
             download_weights(backbone)
@@ -289,7 +295,7 @@ if __name__ == "__main__":
             model_train = torch.nn.DataParallel(model)
             cudnn.benchmark = True
             model_train = model_train.cuda()
-        
+
     #---------------------------#
     #   读取数据集对应的txt
     #---------------------------#
@@ -311,7 +317,7 @@ if __name__ == "__main__":
     )
     #---------------------------------------------------------#
     #   总训练世代指的是遍历全部数据的总次数
-    #   总训练步长指的是梯度下降的总次数 
+    #   总训练步长指的是梯度下降的总次数
     #   每个训练世代包含若干训练步长，每个训练步长进行一次梯度下降。
     #   此处仅建议最低训练世代，上不封顶，计算时只考虑了解冻部分
     #----------------------------------------------------------#
@@ -356,29 +362,29 @@ if __name__ == "__main__":
             lr_limit_min    = 1e-5 if optimizer_type == 'adam' else 5e-4
         Init_lr_fit     = min(max(batch_size / nbs * Init_lr, lr_limit_min), lr_limit_max)
         Min_lr_fit      = min(max(batch_size / nbs * Min_lr, lr_limit_min * 1e-2), lr_limit_max * 1e-2)
-        
+
         optimizer = {
             'adam'  : optim.Adam(model_train.parameters(), Init_lr_fit, betas = (momentum, 0.999), weight_decay=weight_decay),
             'sgd'   : optim.SGD(model_train.parameters(), Init_lr_fit, momentum = momentum, nesterov=True)
         }[optimizer_type]
-        
+
         #---------------------------------------#
         #   获得学习率下降的公式
         #---------------------------------------#
         lr_scheduler_func = get_lr_scheduler(lr_decay_type, Init_lr_fit, Min_lr_fit, UnFreeze_Epoch)
-        
+
         #---------------------------------------#
         #   判断每一个世代的长度
         #---------------------------------------#
         epoch_step      = num_train // batch_size
         epoch_step_val  = num_val // batch_size
-        
+
         if epoch_step == 0 or epoch_step_val == 0:
             raise ValueError("数据集过小，无法继续进行训练，请扩充数据集。")
 
         train_dataset   = DataGenerator(train_lines, input_shape, True)
         val_dataset     = DataGenerator(val_lines, input_shape, False)
-        
+
         if distributed:
             train_sampler   = torch.utils.data.distributed.DistributedSampler(train_dataset, shuffle=True,)
             val_sampler     = torch.utils.data.distributed.DistributedSampler(val_dataset, shuffle=False,)
@@ -388,7 +394,7 @@ if __name__ == "__main__":
             train_sampler   = None
             val_sampler     = None
             shuffle         = True
-            
+
         gen             = DataLoader(train_dataset, shuffle=shuffle, batch_size=batch_size, num_workers=num_workers, pin_memory=True, 
                                 drop_last=True, collate_fn=detection_collate, sampler=train_sampler)
         gen_val         = DataLoader(val_dataset, shuffle=shuffle, batch_size=batch_size, num_workers=num_workers, pin_memory=True,
@@ -420,7 +426,7 @@ if __name__ == "__main__":
                 #   获得学习率下降的公式
                 #---------------------------------------#
                 lr_scheduler_func = get_lr_scheduler(lr_decay_type, Init_lr_fit, Min_lr_fit, UnFreeze_Epoch)
-                
+
                 model.Unfreeze_backbone()
 
                 epoch_step      = num_train // batch_size
@@ -441,9 +447,9 @@ if __name__ == "__main__":
 
             if distributed:
                 train_sampler.set_epoch(epoch)
-                
+
             set_optimizer_lr(optimizer, lr_scheduler_func, epoch)
-            
+
             fit_one_epoch(model_train, model, loss_history, optimizer, epoch, epoch_step, epoch_step_val, gen, gen_val, UnFreeze_Epoch, Cuda, fp16, scaler, save_period, save_dir, local_rank)
 
         if local_rank == 0:

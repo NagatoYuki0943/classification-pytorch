@@ -13,12 +13,12 @@ class DataGenerator(data.Dataset):
         self.annotation_lines   = annotation_lines
         self.input_shape        = input_shape
         self.random             = random
-        
+
         self.autoaugment_flag   = autoaugment_flag
         if self.autoaugment_flag:
             self.resize_crop = RandomResizedCrop(input_shape)
             self.policy      = ImageNetPolicy()
-            
+
             self.resize      = Resize(input_shape[0] if input_shape[0] == input_shape[1] else input_shape)
             self.center_crop = CenterCrop(input_shape)
 
@@ -95,13 +95,13 @@ class DataGenerator(data.Dataset):
         #------------------------------------------#
         flip = self.rand()<.5
         if flip: image = image.transpose(Image.FLIP_LEFT_RIGHT)
-        
+
         rotate = self.rand()<.5
-        if rotate: 
+        if rotate:
             angle = np.random.randint(-15,15)
             a,b = w/2,h/2
             M = cv2.getRotationMatrix2D((a,b),angle,1)
-            image = cv2.warpAffine(np.array(image), M, (w,h), borderValue=[128, 128, 128]) 
+            image = cv2.warpAffine(np.array(image), M, (w,h), borderValue=[128, 128, 128])
 
         image_data      = np.array(image, np.uint8)
         #---------------------------------#
@@ -125,7 +125,7 @@ class DataGenerator(data.Dataset):
         image_data = cv2.merge((cv2.LUT(hue, lut_hue), cv2.LUT(sat, lut_sat), cv2.LUT(val, lut_val)))
         image_data = cv2.cvtColor(image_data, cv2.COLOR_HSV2RGB)
         return image_data
-    
+
     def AutoAugment(self, image, random=True):
         if not random:
             image = self.resize(image)
@@ -136,19 +136,19 @@ class DataGenerator(data.Dataset):
         #   resize并且随即裁剪
         #------------------------------------------#
         image = self.resize_crop(image)
-        
+
         #------------------------------------------#
         #   翻转图像
         #------------------------------------------#
         flip = self.rand()<.5
         if flip: image = image.transpose(Image.FLIP_LEFT_RIGHT)
-        
+
         #------------------------------------------#
         #   随机增强
         #------------------------------------------#
         image = self.policy(image)
         return image
-            
+
 def detection_collate(batch):
     images = []
     targets = []

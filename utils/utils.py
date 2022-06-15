@@ -14,10 +14,10 @@ from .utils_aug import resize, center_crop
 #---------------------------------------------------------#
 def cvtColor(image):
     if len(np.shape(image)) == 3 and np.shape(image)[2] == 3:
-        return image 
+        return image
     else:
         image = image.convert('RGB')
-        return image 
+        return image
 
 #---------------------------------------------------#
 #   对输入图像进行resize
@@ -135,7 +135,7 @@ def set_optimizer_lr(optimizer, lr_scheduler_func, epoch):
 def download_weights(backbone, model_dir="./model_data"):
     import os
     from torch.hub import load_state_dict_from_url
-    
+
     download_urls = {
         'vgg16'         : 'https://download.pytorch.org/models/vgg16-397923af.pth',
         'mobilenet'     : 'https://download.pytorch.org/models/mobilenet_v2-b0353104.pth',
@@ -143,7 +143,7 @@ def download_weights(backbone, model_dir="./model_data"):
         'vit'           : 'https://github.com/bubbliiiing/classification-pytorch/releases/download/v1.0/vit-patch_16.pth'
     }
     url = download_urls[backbone]
-    
+
     if not os.path.exists(model_dir):
         os.makedirs(model_dir)
     load_state_dict_from_url(url, model_dir)

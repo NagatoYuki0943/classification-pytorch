@@ -1,3 +1,7 @@
+#------------------------------#
+# top1 top5
+#------------------------------#
+
 import os
 
 import numpy as np
@@ -18,7 +22,7 @@ test_annotation_path    = 'cls_test.txt'
 metrics_out_path        = "metrics_out"
 
 class Eval_Classification(Classification):
-    def detect_image(self, image):        
+    def detect_image(self, image):
         #---------------------------------------------------------#
         #   在这里将图像转换成RGB图像，防止灰度图在预测时报错。
         #   代码仅仅支持RGB图像的预测，所有其它类型的图像都会转化成RGB
@@ -47,9 +51,9 @@ class Eval_Classification(Classification):
 if __name__ == "__main__":
     if not os.path.exists(metrics_out_path):
         os.makedirs(metrics_out_path)
-            
+
     classfication = Eval_Classification()
-    
+
     with open("./cls_test.txt","r") as f:
         lines = f.readlines()
     top1, top5, Recall, Precision = evaluteTop1_5(classfication, lines, metrics_out_path)
