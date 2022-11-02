@@ -234,7 +234,7 @@ if __name__ == "__main__":
         #------------------------------------------------------#
         if local_rank == 0:
             print('Load weights {}.'.format(model_path))
-        
+
         #------------------------------------------------------#
         #   根据预训练权重的Key和模型的Key进行加载
         #------------------------------------------------------#
@@ -264,7 +264,7 @@ if __name__ == "__main__":
         loss_history = LossHistory(save_dir, model, input_shape=input_shape)
     else:
         loss_history = None
-        
+
     #------------------------------------------------------------------#
     #   torch 1.2不支持amp，建议使用torch 1.7.1及以上正确使用fp16
     #   因此torch1.2这里显示"could not be resolve"
@@ -308,7 +308,7 @@ if __name__ == "__main__":
     np.random.seed(10101)
     np.random.shuffle(train_lines)
     np.random.seed(None)
-    
+
     show_config(
         num_classes = num_classes, backbone = backbone, model_path = model_path, input_shape = input_shape, \
         Init_Epoch = Init_Epoch, Freeze_Epoch = Freeze_Epoch, UnFreeze_Epoch = UnFreeze_Epoch, Freeze_batch_size = Freeze_batch_size, Unfreeze_batch_size = Unfreeze_batch_size, Freeze_Train = Freeze_Train, \
@@ -395,7 +395,7 @@ if __name__ == "__main__":
             val_sampler     = None
             shuffle         = True
 
-        gen             = DataLoader(train_dataset, shuffle=shuffle, batch_size=batch_size, num_workers=num_workers, pin_memory=True, 
+        gen             = DataLoader(train_dataset, shuffle=shuffle, batch_size=batch_size, num_workers=num_workers, pin_memory=True,
                                 drop_last=True, collate_fn=detection_collate, sampler=train_sampler)
         gen_val         = DataLoader(val_dataset, shuffle=shuffle, batch_size=batch_size, num_workers=num_workers, pin_memory=True,
                                 drop_last=True, collate_fn=detection_collate, sampler=val_sampler)
